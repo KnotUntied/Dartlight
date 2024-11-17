@@ -11,7 +11,7 @@ contexts:
   main:
     - match: ^(#!.*)$
       scope: meta.preprocessor.script.dart
-    - match: ^\w*\b(library|import|part of|part|export)\b
+    - match: ^\w*\b(augment\s+library|library|import\s+augment|import|part\s+of|part|export)\b
       captures:
         0: keyword.other.import.dart
       push:
@@ -24,15 +24,47 @@ contexts:
         - include: comments
         - match: \b(as|show|hide)\b
           scope: keyword.other.import.dart
+        - match: \b(if)\b
+          scope: keyword.control.dart
     - include: comments
     - include: punctuation
     - include: annotations
     - include: keywords
     - include: constants-and-special-vars
+    - include: operators
     - include: strings
   annotations:
     - match: '@[a-zA-Z]+'
       scope: storage.type.annotation.dart
+  # TODO
+  class-identifier:
+    - match: (?<!\$)\b(bool|num|int|double|dynamic)\b(?!\$)
+      scope: support.class.dart
+    - match: (?<!\$)\bvoid\b(?!\$)
+      scope: storage.type.primitive.dart
+  #   <array>
+  #     <dict>
+  #       <key>begin</key>
+  #       <string>(?<![a-zA-Z0-9_$])([_$]*[A-Z][a-zA-Z0-9_$]*)\b</string>
+  #       <key>beginCaptures</key>
+  #       <dict>
+  #         <key>1</key>
+  #         <dict>
+  #           <key>name</key>
+  #           <string>support.class.dart</string>
+  #         </dict>
+  #       </dict>
+  #       <key>end</key>
+  #       <string>(?!<)</string>
+  #       <key>patterns</key>
+  #       <array>
+  #         <dict>
+  #           <key>include</key>
+  #           <string>#type-args</string>
+  #         </dict>
+  #       </array>
+  #     </dict>
+  #   </array>
   comments:
     - match: /\*\*/
       scope: comment.block.empty.dart
@@ -52,6 +84,10 @@ contexts:
     - match: ///
       push:
         - meta_scope: comment.block.documentation.dart
+        # - <key>end</key>
+        # - <string>.*</string>
+        # + <key>while</key>
+        # + <string>^\s*///</string>
         - match: .*
           pop: true
         - include: dartdoc
@@ -72,12 +108,18 @@ contexts:
   constants-and-special-vars:
     - match: (?<!\$)\b(true|false|null)\b(?!\$)
       scope: constant.language.dart
-    - match: (?<!\$)\b(this|super)\b(?!\$)
+    - match: (?<!\$)\b(this|super|augmented)\b(?!\$)
       scope: variable.language.dart
     - match: '(?<!\$)\b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)\b(?!\$)'
       scope: constant.numeric.dart
+    # Uncomment after class-identifier is done
+    # - include: class-identifier
+    # Delete after class-identifier is done
     - match: '(?<![a-zA-Z0-9_$])([_$]*[A-Z][a-zA-Z0-9_$]*|bool\b|num\b|int\b|double\b|dynamic\b)'
       scope: support.class.dart
+    # Uncomment after function-identifier is done
+    # - include: function-identifier
+    # Delete after function-identifier is done
     - match: '([_$]*[a-z][a-zA-Z0-9_$]*)(<|\(|\s+=>)'
       captures:
         1: entity.name.function.dart
@@ -103,12 +145,29 @@ contexts:
       captures:
         2: variable.other.source.dart
     - match: (\*    .*)$
+  expression:
+    - include: constants-and-special-vars
+    - include: strings
+    - match: '[a-zA-Z0-9_]+'
+      scope: variable.parameter.dart
+    - match: \{
+      push:
+        - match: \}
+          pop: true
+        - include: expression
+  # TODO
+  # function-identifier:
+  #   - match: ([_$]*[a-z][a-zA-Z0-9_$]*)(<(?:[a-zA-Z0-9_$<>?]|,\s*|\s+extends\s+)+>)?[!?]?\(
+  #     captures:
+  #       1: entity.name.function.dart
+        # 2:
+        #   - include: type-args
   keywords:
     - match: (?<!\$)\bas\b(?!\$)
       scope: keyword.cast.dart
     - match: (?<!\$)\b(try|on|catch|finally|throw|rethrow)\b(?!\$)
       scope: keyword.control.catch-exception.dart
-    - match: (?<!\$)\b(break|case|continue|default|do|else|for|if|in|return|switch|while)\b(?!\$)
+    - match: (?<!\$)\b(break|case|continue|default|do|else|for|if|in|switch|while|when)\b(?!\$)
       scope: keyword.control.dart
     - match: (?<!\$)\b(sync(\*)?|async(\*)?|await|yield(\*)?)\b(?!\$)
       scope: keyword.control.dart
@@ -116,8 +175,15 @@ contexts:
       scope: keyword.control.dart
     - match: (?<!\$)\b(new)\b(?!\$)
       scope: keyword.control.new.dart
-    - match: (?<!\$)\b(abstract|class|enum|extends|external|factory|implements|get|mixin|native|operator|set|typedef|with|covariant)\b(?!\$)
+    - match: (?<!\$)\b(return)\b(?!\$)
+      scope: keyword.control.return.dart
+    - match: (?<!\$)\b(abstract|sealed|base|interface|class|enum|extends|extension\s+type|extension|external|factory|implements|get(?![(<])|mixin|native|operator|set(?![(<])|typedef|with|covariant)\b(?!\$)
       scope: keyword.declaration.dart
+    - match: (?<!\$)\b(macro|augment|static|final|const|required|late)\b(?!\$)
+      scope: storage.modifier.dart
+    - match: (?<!\$)\b(?:void|var)\b(?!\$)
+      scope: storage.type.primitive.dart
+  operators:
     - match: (?<!\$)\b(is\!?)\b(?!\$)
       scope: keyword.operator.dart
     - match: '\?|:'
@@ -140,10 +206,6 @@ contexts:
       scope: keyword.operator.arithmetic.dart
     - match: (!|&&|\|\|)
       scope: keyword.operator.logical.dart
-    - match: (?<!\$)\b(static|final|const)\b(?!\$)
-      scope: storage.modifier.dart
-    - match: (?<!\$)\b(?:void|var)\b(?!\$)
-      scope: storage.type.primitive.dart
   punctuation:
     - match: ','
       scope: punctuation.comma.dart
@@ -152,10 +214,16 @@ contexts:
     - match: \.
       scope: punctuation.dot.dart
   string-interp:
-    - match: '\$((\w+)|\{([^{}]+)\})'
+    - match: \$([a-zA-Z0-9_]+)
       captures:
-        2: variable.parameter.dart
-        3: variable.parameter.dart
+        1: variable.parameter.dart
+      scope: meta.embedded.expression.dart
+    - match: \$\{
+      push:
+        - meta_scope: meta.embedded.expression.dart
+        - match: \}
+          pop: true
+        - include: expression
     - match: \\.
       scope: constant.character.escape.dart
   strings:
@@ -211,3 +279,48 @@ contexts:
           pop: true
         - match: \n
           scope: invalid.string.newline
+  # TODO
+  # type-args:
+  # <dict>
+  #   <key>begin</key>
+  #   <string>(<)</string>
+  #   <key>beginCaptures</key>
+  #   <dict>
+  #     <key>1</key>
+  #     <dict>
+  #       <key>name</key>
+  #       <string>other.source.dart</string>
+  #     </dict>
+  #   </dict>
+  #   <key>end</key>
+  #   <string>(>)</string>
+  #   <key>endCaptures</key>
+  #   <dict>
+  #     <key>1</key>
+  #     <dict>
+  #       <key>name</key>
+  #       <string>other.source.dart</string>
+  #     </dict>
+  #   </dict>
+  #   <key>patterns</key>
+  #   <array>
+  #     <dict>
+  #       <key>include</key>
+  #       <string>#class-identifier</string>
+  #     </dict>
+  #     <dict>
+  #       <key>match</key>
+  #       <string>,</string>
+  #     </dict>
+  #     <dict>
+  #       <key>match</key>
+  #       <string>extends</string>
+  #       <key>name</key>
+  #       <string>keyword.declaration.dart</string>
+  #     </dict>
+  #     <dict>
+  #       <key>include</key>
+  #       <string>#comments</string>
+  #     </dict>
+  #   </array>
+  # </dict>
